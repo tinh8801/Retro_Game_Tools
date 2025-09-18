@@ -1,22 +1,25 @@
 '''
-Dragon Quest V DS MPT File Tool
+Dragon Quest V DS MPT File Structure
 
-32 bytes header gồm
-4 bytes đầu là MPT0
-4 bytes kế là file size
-4 bytes kế là ID câu thoại đầu
-4 bytes kế là ID câu thoại cuối
-4 bytes kế là tổng số câu thoại trong file
-4 bytes kế là độ dài header (32 bytes)
-4 bytes kế là độ dài của pointer table
-4 bytes cuối độ dài của toàn bộ thoại
+32 bytes header gồm:
+    4 bytes đầu là MPT0
+    4 bytes kế là file size
+    4 bytes kế là ID câu thoại đầu
+    4 bytes kế là ID câu thoại cuối
+    4 bytes kế là tổng số câu thoại trong file
+    4 bytes kế là kích thước header (32 bytes)
+    4 bytes kế là kích thước của pointer table
+    4 bytes cuối kích thước của toàn bộ thoại
 
 Pointer table
-Mỗi pointer dài 6 bytes
-2 bytes đầu + ID câu thoại đầu = ID câu thoại
-2 bytes kế là độ dài câu thoại (không tính byte padding)
-2 bytes cuối * 4 + độ dài pointer table + độ dài header = offset câu thoại (offset là bội số của 4)
+Mỗi pointer gồm 6 bytes:
+    2 bytes đầu + ID câu thoại đầu => ID câu thoại
+    2 bytes kế là kích thước câu thoại (không tính byte padding)
+    2 bytes cuối * 4 + kích thước pointer table + kích thước header = offset câu thoại (offset phải là bội số của 4)
+    ** Nếu offset tính ra được không phải bội số của 4 thì thêm một hoặc vài byte padding (0xFE) vào cuối câu thoại trước
 '''
+import argparse
+import time
 
 def get_file_info(filename):
     mptfile = open(filename, "rb")
@@ -53,6 +56,7 @@ def print_file_info(filename):
     print(F"Message length: {info[7]} bytes")
 
 def extract_text(mpt_file, txt_file):
+    start_time = time.perf_counter()
     mptfile = open(mpt_file, "rb")
     txtfile = open(txt_file, "w+", encoding="UTF8", newline="\n")
     mptfile.seek(get_file_info(mpt_file)[5])
@@ -70,9 +74,37 @@ def extract_text(mpt_file, txt_file):
         txtfile.write(F"\n<{text_offset:X}>")
         txtfile.write(text_content.decode(encoding="UTF8", errors="strict").replace("\r\n","{BREAK}"))
     txtfile.write(".")    
-    print("Done")
+    #print("Done")
     mptfile.close()
     txtfile.close()
+    end_time = time.perf_counter()
+    print(F"Running time: {(end_time - start_time):.3f} second")
 
-print_file_info("b0000000.mpt")
-extract_text("b0000000_new.mpt", "test.txt")
+
+def main():
+    print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+    print(":: Dragon Quest V DS Tool                                                ::")
+    print(":: Version: 0.1                                                          ::")
+    print(":: Date: 2025.09.10                                                      ::")
+    print(":: Tác giả: Huy Thắng                                                    ::")
+    print(":: Sử dụng: dq5extractor in_file [-o out_file]                           ::")
+    print(":: Ví dụ:                                                                ::")
+    print(":: dq5extractor b0000000.mpt                                             ::")
+    print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+
+    parser = argparse.ArgumentParser(description="Dragon Quest V DS text extractor")
+    parser.add_argument("infile", type=str, help="Tên tập tin .mpt")
+    parser.add_argument("-o", "--outfile", type=str, help="Tên tập tin .txt")
+    args = parser.parse_args()
+    print_file_info(args.infile)
+    out_file = args.infile
+    out_file = out_file[0:out_file.index(".mpt")] + ".txt"
+    if args.outfile==None:
+        extract_text(args.infile, out_file)
+    else:
+        extract_text(args.infile, args.outfile)
+    
+    
+if __name__=="__main__":
+    main()
+    #extract_text("b0000000_new.mpt", "test.txt")
